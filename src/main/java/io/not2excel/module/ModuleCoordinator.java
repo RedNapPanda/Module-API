@@ -8,49 +8,61 @@
  */
 package io.not2excel.module;
 
+import io.not2excel.module.annotation.ModuleInfo;
 import io.not2excel.module.context.Module;
+import io.not2excel.module.exception.ModuleDisableException;
+import io.not2excel.module.exception.ModuleEnableException;
+import io.not2excel.module.exception.ModuleLoadException;
+import io.not2excel.module.exception.ModuleUnLoadException;
 
 import java.util.List;
 import java.util.Map;
 
 public interface ModuleCoordinator<M extends Module> {
 
-    void load(M module);
+    void load(M module) throws ModuleLoadException;
 
-    void load(Class<M> moduleClass);
+    void load(Class<M> moduleClass) throws ModuleLoadException;
 
     void load(List<Class<M>> moduleClassList);
 
-    void unload(M module);
+    void unload(M module) throws ModuleUnLoadException;
 
-    void unload(Class<M> moduleClass);
+    void unload(Class<? extends Module> moduleClass);
 
-    void unload(List<Class<M>> moduleClassList);
+    void unload(List<Class<? extends Module>> moduleClassList);
 
-    void unload(String id);
+    void unload(String id) throws ModuleUnLoadException;
 
-    void enable(String id);
+    void enable(String id) throws ModuleEnableException;
 
     void enable(String... idList);
 
-    void enable(M module);
+    void enable(M module) throws ModuleEnableException;
 
     void enable(List<M> moduleList);
 
-    void disable(String id);
+    void disable(String id) throws ModuleDisableException;
 
     void disable(String... idList);
 
-    void disable(M module);
+    void disable(M module) throws ModuleDisableException;
 
     void disable(List<M> moduleList);
 
     M getModule(String id);
 
-    M getModule(Class<M> module);
+    M getModule(Class<? extends Module> moduleClass);
+
+    boolean hasModule(String id);
+
+    boolean hasModule(Class<? extends Module> moduleClass);
 
     Map<String, M> getModuleList();
 
-    Class<M> getModuleClass();
+    ModuleInfo getModuleInfo(M module);
+
+    ModuleInfo getModuleInfo(Class<? extends Module> moduleClass);
+
+    Class<M> getBaseModuleClass();
 }
-//http://steamcommunity.com/profiles/76561198227314644/

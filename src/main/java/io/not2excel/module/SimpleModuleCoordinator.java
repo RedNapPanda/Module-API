@@ -8,7 +8,12 @@
  */
 package io.not2excel.module;
 
+import io.not2excel.module.annotation.ModuleInfo;
 import io.not2excel.module.context.Module;
+import io.not2excel.module.exception.ModuleDisableException;
+import io.not2excel.module.exception.ModuleEnableException;
+import io.not2excel.module.exception.ModuleLoadException;
+import io.not2excel.module.exception.ModuleUnLoadException;
 
 import java.util.HashMap;
 import java.util.List;
@@ -16,97 +21,197 @@ import java.util.Map;
 
 public class SimpleModuleCoordinator<M extends Module> implements ModuleCoordinator<M> {
 
-    private Class<M> moduleClass;
+    private Class<M> baseModuleClass;
     private Map<String, M> moduleMap;
 
-    public SimpleModuleCoordinator(Class<M> moduleClass) {
+    public SimpleModuleCoordinator(Class<M> baseModuleClass) {
         moduleMap = new HashMap<>();
-        this.moduleClass = moduleClass;
+        this.baseModuleClass = baseModuleClass;
     }
 
     @Override
-    public void load(M module) {
-
+    public void load(M module) throws ModuleLoadException {
+        if (!this.hasModule(module.getClass())) {
+            ModuleInfo info = this.getModuleInfo(module);
+            this.moduleMap.put(info.id(), module);
+            module.onLoad();
+        }
+        else {
+            throw new ModuleLoadException(module.getClass().getSimpleName());
+        }
     }
 
     @Override
     public void load(Class<M> moduleClass) {
-
+        M module;
+        try {
+            module = moduleClass.newInstance();
+            this.load(module);
+        } catch (InstantiationException | IllegalAccessException | ModuleLoadException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
     public void load(List<Class<M>> moduleClassList) {
-
+        moduleClassList.forEach(this::load);
     }
 
     @Override
-    public void unload(M module) {
-
+    public void unload(M module) throws ModuleUnLoadException {
+        if (this.hasModule(module.getClass())) {
+            ModuleInfo info = this.getModuleInfo(module);
+            this.unload(info.id());
+        }
+        else {
+            throw new ModuleUnLoadException(module.getClass().getSimpleName());
+        }
     }
 
     @Override
-    public void unload(Class<M> moduleClass) {
-
+    public void unload(Class<? extends Module> moduleClass) {
+        M module = this.getModule(moduleClass);
+        if (module != null) {
+            try {
+                this.unload(module);
+            } catch (ModuleUnLoadException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     @Override
-    public void unload(List<Class<M>> moduleClassList) {
-
+    public void unload(List<Class<? extends Module>> moduleClassList) {
+        moduleClassList.forEach(this::unload);
     }
 
     @Override
-    public void unload(String id) {
-
+    public void unload(String id) throws ModuleUnLoadException {
+        if(this.moduleMap.containsKey(id)) {
+            M module = this.moduleMap.get(id);
+            module.onUnload();
+            this.moduleMap.remove(id);
+        }
+        else {
+            throw new ModuleUnLoadException(id);
+        }
     }
 
     @Override
-    public void enable(String id) {
-
+    public void enable(String id) throws ModuleEnableException {
+        if(this.moduleMap.containsKey(id)) {
+            M module = this.moduleMap.get(id);
+            module.onEnable();
+        } else {
+            throw new ModuleEnableException(id);
+        }
     }
 
     @Override
     public void enable(String... idList) {
-
+        for(String id : idList) {
+            try {
+                this.enable(id);
+            } catch (ModuleEnableException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     @Override
-    public void enable(M module) {
-
+    public void enable(M module) throws ModuleEnableException {
+        if(this.hasModule(module.getClass())) {
+            module.onEnable();
+        } else {
+            throw new ModuleEnableException(module.getClass().getSimpleName());
+        }
     }
 
     @Override
     public void enable(List<M> moduleList) {
-
+        moduleList.forEach((module) -> {
+            try {
+                this.enable(module);
+            } catch (ModuleEnableException e) {
+                e.printStackTrace();
+            }
+        });
     }
 
     @Override
-    public void disable(String id) {
-
+    public void disable(String id) throws ModuleDisableException {
+        if(this.moduleMap.containsKey(id)) {
+            M module = this.moduleMap.get(id);
+            module.onDisable();
+        } else {
+            throw new ModuleDisableException(id);
+        }
     }
 
     @Override
     public void disable(String... idList) {
-
+        for(String id : idList) {
+            try {
+                this.disable(id);
+            } catch (ModuleDisableException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     @Override
-    public void disable(M module) {
-
+    public void disable(M module) throws ModuleDisableException {
+        if(this.hasModule(module.getClass())) {
+            module.onEnable();
+        } else {
+            throw new ModuleDisableException(module.getClass().getSimpleName());
+        }
     }
 
     @Override
     public void disable(List<M> moduleList) {
-
+        moduleList.forEach((module) -> {
+            try {
+                this.disable(module);
+            } catch (ModuleDisableException e) {
+                e.printStackTrace();
+            }
+        });
     }
 
     @Override
     public M getModule(String id) {
-        return null;
+        return this.moduleMap.get(id);
     }
 
     @Override
-    public M getModule(Class<M> module) {
-        return null;
+    public M getModule(Class<? extends Module> moduleClass) {
+        M module = null;
+        for (M m : this.moduleMap.values()) {
+            if (m.getClass().equals(moduleClass)) {
+                module = m;
+                break;
+            }
+        }
+        return module;
+    }
+
+
+    @Override
+    public boolean hasModule(String id) {
+        return this.moduleMap.containsKey(id);
+    }
+
+    @Override
+    public boolean hasModule(Class<? extends Module> moduleClass) {
+        boolean hasModule = false;
+        for (M m : this.moduleMap.values()) {
+            if (m.getClass().equals(moduleClass)) {
+                hasModule = true;
+                break;
+            }
+        }
+        return hasModule;
     }
 
     @Override
@@ -115,7 +220,17 @@ public class SimpleModuleCoordinator<M extends Module> implements ModuleCoordina
     }
 
     @Override
-    public Class<M> getModuleClass() {
-        return this.moduleClass;
+    public ModuleInfo getModuleInfo(M module) {
+        return module.getClass().getAnnotation(ModuleInfo.class);
+    }
+
+    @Override
+    public ModuleInfo getModuleInfo(Class<? extends Module> moduleClass) {
+        return moduleClass.getAnnotation(ModuleInfo.class);
+    }
+
+    @Override
+    public Class<M> getBaseModuleClass() {
+        return this.baseModuleClass;
     }
 }
