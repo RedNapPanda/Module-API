@@ -59,9 +59,9 @@ public final class ClassEnumerator {
     }
 
     /**
-     * Filters a ClassData object for classes that have the passed annotation
+     * Filters a LoadedClasses object for classes that have the passed annotation
      *
-     * @param input      classData object
+     * @param input      loadedClasses object
      * @param annotation annotation to filter by
      * @return filtered list
      * @since 0.0.1
@@ -77,10 +77,10 @@ public final class ClassEnumerator {
      *
      * @param directory directory to search
      * @param jarOnly   load only Jar Files
-     * @return classData object
+     * @return loadedClasses object
      */
-    public static Map<String, LoadedClasses> getClassesFromDirectory(final File directory, final boolean jarOnly) {
-        Map<String, LoadedClasses> dataMap = Collections.emptyMap();
+    public static Map<String, LoadedClasses> loadClassesFromDirectory(final File directory, final boolean jarOnly) {
+        Map<String, LoadedClasses> loadedMap = new HashMap<>();
         final ClassLoader classLoader;
         try {
             classLoader = new URLClassLoader(new URL[]{directory.toURI().toURL()},
@@ -89,8 +89,8 @@ public final class ClassEnumerator {
             logger.log(Level.WARNING, "Failed to create ClassLoader", e);
             return null;
         }
-        dataMap.putAll(processFileTree(directory, classLoader, "", jarOnly));
-        return dataMap;
+        loadedMap.putAll(processFileTree(directory, classLoader, "", jarOnly));
+        return loadedMap;
     }
 
     /**
@@ -98,31 +98,34 @@ public final class ClassEnumerator {
      * <p>
      * NOTE: Internal usage only, ClassEnumerator must exist in
      * the same {@link java.security.ProtectionDomain#getCodeSource},
-     * else this will fail and return a classData object that is empty
+     * else this will fail and return a loadedClasses object that is empty
      * <p>
-     * Calls {@link io.not2excel.util.ClassEnumerator#getClassesFromPackage(java.lang.String, java.lang.String)}
+     * Calls {@link io.not2excel.util.ClassEnumerator#loadClassesFromPackage(java.lang.String, java.lang.String)}
      *
      * @param packageName internal package name
-     * @return classData object
+     * @return loadedClasses object
      * @since 0.0.1
      */
-    public static Set<LoadedClasses> getClassesFromPackage(final String packageName) {
+    public static Set<LoadedClasses> loadClassesFromPackage(String packageName) {
+        if(packageName.contains(".")) {
+            packageName = packageName.replace(".", "/");
+        }
         String codeSource = ClassEnumerator.class.getProtectionDomain().getCodeSource().getLocation().getPath();
-        return getClassesFromPackage(packageName, codeSource);
+        return loadClassesFromPackage(packageName, codeSource);
     }
 
     /**
      * Retrieves all classes from a specified package that the given class resides in
-     * Calls {@link io.not2excel.util.ClassEnumerator#getClassesFromPackage(java.lang.String, java.lang.String)}
+     * Calls {@link io.not2excel.util.ClassEnumerator#loadClassesFromPackage(java.lang.String, java.lang.String)}
      *
      * @param clazz class to pull code-source and package from
-     * @return classData object
+     * @return loadedClasses object
      * @since 0.0.1
      */
-    public static Set<LoadedClasses> getClassesFromPackage(final Class<?> clazz) {
+    public static Set<LoadedClasses> loadClassesFromPackage(final Class<?> clazz) {
         String packageName = clazz.getPackage().getName().replace(".", "/");
         String codeSource = clazz.getProtectionDomain().getCodeSource().getLocation().getPath();
-        return getClassesFromPackage(packageName, codeSource);
+        return loadClassesFromPackage(packageName, codeSource);
     }
 
     /**
@@ -131,14 +134,15 @@ public final class ClassEnumerator {
      *
      * @param packageName package name, can be with either separator "." or "/"
      * @param codeSource  path of class origination
-     * @return classData object
+     * @return loadedClasses object
      * @since 0.0.1
      */
-    private static Set<LoadedClasses> getClassesFromPackage(final String packageName, String codeSource) {
+    //TODO: Return a mapping: packageName -> Set<LoadedClasses>
+    private static Set<LoadedClasses> loadClassesFromPackage(final String packageName, String codeSource) {
         boolean isJar = codeSource.endsWith(".jar");
         codeSource += isJar ? "" : packageName;
         codeSource = codeSource.replace(".", "/");
-        Set<LoadedClasses> classDataSet = Collections.synchronizedSet(new HashSet<>());
+        Set<LoadedClasses> loadedClassesSet = Collections.synchronizedSet(new HashSet<>());
         File file;
         try {
             file = new File(URLDecoder.decode(codeSource, "UTF-8"));
@@ -155,22 +159,23 @@ public final class ClassEnumerator {
             return null;
         }
         if (isJar) {
-            classDataSet.add(getClassDataFromJar(file));
+            loadedClassesSet.add(loadClassesFromJar(file));
         } else {
-            classDataSet.addAll(processFileTree(file, classLoader, packageName, false).values());
+            loadedClassesSet.addAll(processFileTree(file, classLoader, packageName, false).values());
+
         }
-        return classDataSet;
+        return loadedClassesSet;
     }
 
     /**
      * Returns the relative {@link io.not2excel.util.ClassEnumerator.LoadedClasses} object created from processing a jar
-     * Calls {@link io.not2excel.util.ClassEnumerator#getClassDataFromJar(java.io.File, java.lang.ClassLoader)}
+     * Calls {@link io.not2excel.util.ClassEnumerator#loadClassesFromJar(java.io.File, java.lang.ClassLoader)}
      *
      * @param file file passed that *should* be a .jar file
-     * @return classData object
+     * @return loadedClasses object
      * @since 0.0.1
      */
-    public static LoadedClasses getClassDataFromJar(final File file) {
+    public static LoadedClasses loadClassesFromJar(final File file) {
         final ClassLoader classLoader;
         try {
             classLoader = new URLClassLoader(new URL[]{file.toURI().toURL()},
@@ -179,18 +184,19 @@ public final class ClassEnumerator {
             logger.log(Level.WARNING, "Failed to create ClassLoader", e);
             return null;
         }
-        return getClassDataFromJar(file, classLoader);
+        return loadClassesFromJar(file, classLoader);
     }
 
     /**
      * Returns the relative {@link io.not2excel.util.ClassEnumerator.LoadedClasses} object created from processing a jar
      *
      * @param file file passed that *should* be a .jar file
-     * @return classData object
+     * @return loadedClasses object
      * @since 0.0.1
      */
-    public static LoadedClasses getClassDataFromJar(final File file, final ClassLoader classLoader) {
-        final LoadedClasses classData = new LoadedClasses(classLoader);
+    //TODO: Possibly fix structure of loaded classes **NOTE: Most likely this will never be necessary, but just as an future idea
+    public static LoadedClasses loadClassesFromJar(final File file, final ClassLoader classLoader) {
+        final LoadedClasses loadedClasses = new LoadedClasses(classLoader);
         try {
             final JarFile jarFile = new JarFile(file);
             jarFile.stream().parallel().forEach(entry -> {
@@ -199,14 +205,14 @@ public final class ClassEnumerator {
                 }
                 Optional<Class<?>> clazz = Optional.ofNullable(loadClass(entry.getName(), classLoader));
                 if (clazz.isPresent()) {
-                    classData.addClass(clazz.get());
+                    loadedClasses.addClass(clazz.get());
                 }
             });
             jarFile.close();
         } catch (IOException e) {
             logger.log(Level.WARNING, "Failed to create JarFile", e);
         }
-        return classData;
+        return loadedClasses;
     }
 
     /**
@@ -220,9 +226,10 @@ public final class ClassEnumerator {
      * @return set of classes
      * @since 0.0.1
      */
+    //TODO: Fix mapping so that is maps: directoryName -> Set<LoadedClasses>
     private static Map<String, LoadedClasses> processFileTree(final File directory, final ClassLoader classLoader,
                                                               final String prepend, final boolean jarOnly) {
-        final Map<String, LoadedClasses> classMap = Collections.emptyMap();
+        final Map<String, LoadedClasses> classMap = new HashMap<>();
         final Optional<String[]> files = Optional.ofNullable(directory.list());
         if (!files.isPresent()) {
             return classMap;
@@ -236,9 +243,9 @@ public final class ClassEnumerator {
                 if (className.isPresent()) {
                     Optional<Class<?>> clazz = Optional.ofNullable(loadClass(className.get(), classLoader));
                     if (clazz.isPresent()) {
-                        LoadedClasses data = new LoadedClasses(classLoader);
-                        data.addClass(clazz.get());
-                        classMap.put(fileName, data);
+                        LoadedClasses loaded = new LoadedClasses(classLoader);
+                        loaded.addClass(clazz.get());
+                        classMap.put(fileName, loaded);
                     }
                     return;
                 }
@@ -248,7 +255,7 @@ public final class ClassEnumerator {
                 classMap.putAll(processFileTree(subDir, classLoader,
                         String.format("%s.%s", prepend, fileName), jarOnly));
             } else if (subDir.getName().toLowerCase().trim().endsWith(".jar")) {
-                classMap.put(subDir.getName().replace(".jar", ""), getClassDataFromJar(subDir));
+                classMap.put(subDir.getName().replace(".jar", ""), loadClassesFromJar(subDir));
             }
         });
         return classMap;

@@ -6,11 +6,8 @@
  * module-api can not be copied and/or distributed without the express
  * permission of the aforementioned owner.
  */
-package io.not2excel.module.exception;
+package io.not2excel;
 
-public class ModuleLoadException extends Exception {
+public class Main {
 
-    public ModuleLoadException(String msg) {
-        super(msg);
-    }
 }

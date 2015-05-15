@@ -11,6 +11,6 @@ package io.not2excel.module.exception;
 public class ModuleUnLoadException extends Exception {
 
     public ModuleUnLoadException(String msg) {
-        super("Module " + msg + " not loaded.");
+        super(msg);
     }
 }

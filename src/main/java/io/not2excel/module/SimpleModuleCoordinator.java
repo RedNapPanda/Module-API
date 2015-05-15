@@ -37,7 +37,7 @@ public class SimpleModuleCoordinator<M extends Module> implements ModuleCoordina
             module.onLoad();
         }
         else {
-            throw new ModuleLoadException(module.getClass().getSimpleName());
+            throw new ModuleLoadException("Module " + module.getClass().getSimpleName() + " already loaded.");
         }
     }
 
@@ -64,7 +64,7 @@ public class SimpleModuleCoordinator<M extends Module> implements ModuleCoordina
             this.unload(info.id());
         }
         else {
-            throw new ModuleUnLoadException(module.getClass().getSimpleName());
+            throw new ModuleUnLoadException("Module " + module.getClass().getSimpleName() + " not loaded.");
         }
     }
 
@@ -93,7 +93,7 @@ public class SimpleModuleCoordinator<M extends Module> implements ModuleCoordina
             this.moduleMap.remove(id);
         }
         else {
-            throw new ModuleUnLoadException(id);
+            throw new ModuleUnLoadException("Module " + id + " not loaded.");
         }
     }
 
@@ -103,7 +103,7 @@ public class SimpleModuleCoordinator<M extends Module> implements ModuleCoordina
             M module = this.moduleMap.get(id);
             module.onEnable();
         } else {
-            throw new ModuleEnableException(id);
+            throw new ModuleEnableException("Module " + id + " not loaded.");
         }
     }
 
@@ -123,7 +123,7 @@ public class SimpleModuleCoordinator<M extends Module> implements ModuleCoordina
         if(this.hasModule(module.getClass())) {
             module.onEnable();
         } else {
-            throw new ModuleEnableException(module.getClass().getSimpleName());
+            throw new ModuleEnableException("Module " + module.getClass().getSimpleName() + " not loaded.");
         }
     }
 
@@ -144,7 +144,7 @@ public class SimpleModuleCoordinator<M extends Module> implements ModuleCoordina
             M module = this.moduleMap.get(id);
             module.onDisable();
         } else {
-            throw new ModuleDisableException(id);
+            throw new ModuleDisableException("Module " + id+ " not loaded.");
         }
     }
 
@@ -164,7 +164,7 @@ public class SimpleModuleCoordinator<M extends Module> implements ModuleCoordina
         if(this.hasModule(module.getClass())) {
             module.onEnable();
         } else {
-            throw new ModuleDisableException(module.getClass().getSimpleName());
+            throw new ModuleDisableException("Module " + module.getClass().getSimpleName() + " not loaded.");
         }
     }
 
