@@ -75,9 +75,67 @@ public final class ClassEnumerator {
      * @return filtered list
      * @since 0.0.1
      */
-    public static List<Class<?>> filterByAnnotation(final LoadedClasses input, Class<? extends Annotation> annotation) {
+    public static List<Class<?>> filterByAnnotation(final LoadedClasses input,
+                                                    Class<? extends Annotation> annotation) {
         return input.getClassMap().values().stream()
                 .filter(c -> c.isAnnotationPresent(annotation)).collect(Collectors.toList());
+    }
+
+    /**
+     * Filters a LoadedClasses mapping for classes that have the passed annotation
+     *
+     * @param classes mapped LoadedClasses objects
+     * @param annotation annotation to filter by
+     * @return filtered list
+     * @since 0.0.1
+     */
+    public static List<Class<?>> filterByAnnotation(final Map<String, LoadedClasses> classes,
+                                                    Class<? extends Annotation> annotation) {
+        List<Class<?>> classList = new LinkedList<>();
+        classes.values().stream().filter(l -> classList.addAll(filterByAnnotation(l, annotation)));
+        return classList;
+    }
+
+    /**
+     * Filters a list of classes by an assignable class
+     *
+     * @param input class list
+     * @param assignableFrom class that should be assignable from checked class
+     * @return filtered list
+     * @since 0.0.1
+     */
+    public static List<Class<?>> filterByAssignableFrom(final List<Class<?>> input,
+                                                        Class<?> assignableFrom) {
+        return input.stream().filter(assignableFrom::isAssignableFrom).collect(Collectors.toList());
+    }
+
+    /**
+     * Filters a LoadedClasses object by an assignable class
+     *
+     * @param input LoadedClasses object
+     * @param assignableFrom class that should be assignable from checked class
+     * @return filtered list
+     * @since 0.0.1
+     */
+    public static List<Class<?>> filterByAssignableFrom(final LoadedClasses input,
+                                                        Class<?> assignableFrom) {
+        return input.getClassMap().values().stream()
+                .filter(assignableFrom::isAssignableFrom).collect(Collectors.toList());
+    }
+
+    /**
+     * Filters a mapping of LoadedClasses objects by an assignable class
+     *
+     * @param classes mapped LoadedClasses objects
+     * @param assignableFrom class that should be assignable from checked class
+     * @return filtered list
+     * @since 0.0.1
+     */
+    public static List<Class<?>> filterByAssignableFrom(final Map<String, LoadedClasses> classes,
+                                                        Class<?> assignableFrom) {
+        List<Class<?>> classList = new LinkedList<>();
+        classes.values().forEach(l -> classList.addAll(filterByAssignableFrom(l, assignableFrom)));
+        return classList;
     }
 
     /**
@@ -378,7 +436,7 @@ public final class ClassEnumerator {
         });
         if (!loaded.isEmpty()) {
             String pkg = prepend.replace("/", ".");
-            if(pkg.startsWith(".")) {
+            if (pkg.startsWith(".")) {
                 pkg = pkg.substring(1);
             }
             classMap.put(pkg, loaded);
@@ -392,6 +450,9 @@ public final class ClassEnumerator {
      * If the passed className ends with ".class", it'll be removed
      * If the passed className starts with ".", it'll be sub-stringed out
      * Wraps the exception within this method
+     *
+     * NOTE: This does not initialize static blocks
+     *       If you want to initialize the class, use {@link Class#forName(String)} on the loadedClasses
      *
      * @param name        fully qualified name
      * @param classLoader relative classLoader
