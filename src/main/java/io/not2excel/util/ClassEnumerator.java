@@ -377,7 +377,11 @@ public final class ClassEnumerator {
             }
         });
         if (!loaded.isEmpty()) {
-            classMap.put(prepend.replace("/", "."), loaded);
+            String pkg = prepend.replace("/", ".");
+            if(pkg.startsWith(".")) {
+                pkg = pkg.substring(1);
+            }
+            classMap.put(pkg, loaded);
         }
         return classMap;
     }

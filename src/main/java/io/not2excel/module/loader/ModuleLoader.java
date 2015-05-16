@@ -18,7 +18,8 @@ import java.util.Map;
 public interface ModuleLoader<M extends Module> {
 
     default Map<String, LoadedClasses> getInternalModules() {
-        return ClassEnumerator.loadClassesFromJar();
+        return ClassEnumerator.isJar() ? ClassEnumerator.loadClassesFromJar() :
+                ClassEnumerator.loadClassesFromPackage("");
     }
 
     ModuleCoordinator<M> getRelativeCoordinator();
