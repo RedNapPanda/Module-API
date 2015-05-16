@@ -13,11 +13,11 @@ import io.not2excel.module.context.Module;
 import io.not2excel.util.ClassEnumerator;
 import io.not2excel.util.ClassEnumerator.LoadedClasses;
 
-import java.util.Set;
+import java.util.Map;
 
 public interface ModuleLoader<M extends Module> {
 
-    default Set<LoadedClasses> getInternalModules() {
+    default Map<String, LoadedClasses> getInternalModules() {
         return ClassEnumerator.loadClassesFromPackage("io.not2excel");
     }
 

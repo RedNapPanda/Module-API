@@ -8,6 +8,18 @@
  */
 package io.not2excel;
 
+import io.not2excel.module.loader.ModuleLoader;
+
 public class Main {
 
+    public static void main(String[] main) {
+        ModuleLoader<?> loader = () -> null;
+        loader.getInternalModules().forEach((s, l) -> {
+            System.out.println("<====================>");
+            System.out.println(s);
+            System.out.println("----------------------");
+            l.forEach(e -> System.out.println(e.getKey().replace(s, "").substring(1) + " => " + e.getValue().getName()));
+            System.out.println("<====================>");
+        });
+    }
 }

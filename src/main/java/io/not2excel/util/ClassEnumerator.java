@@ -94,6 +94,28 @@ public final class ClassEnumerator {
     }
 
     /**
+     * Retrieves all classes from a specific package, will only return the LoadedClasses object with the same key as the passed packageName
+     * This ignores the rest of the loaded classes from recursive enumeration
+     *
+     * @param packageName package name to return same classes from
+     * @return relative LoadedClasses object
+     */
+    public static LoadedClasses loadClassesFromSinglePackage(String packageName) {
+        return loadClassesFromPackage(packageName).get(packageName);
+    }
+
+    /**
+     * Retrieves all classes from a specific package, will only return the LoadedClasses object relative to the passed Class
+     * This ignores the rest of the loaded classes from recursive enumeration
+     *
+     * @param clazz Class in Package to retrieve Classes from
+     * @return relative LoadedClasses object
+     */
+    public static LoadedClasses loadClassesFromSinglePackage(Class<?> clazz) {
+        return loadClassesFromPackage(clazz).get(clazz.getPackage().getName());
+    }
+
+    /**
      * Retrieves all classes from a specified package
      * <p>
      * NOTE: Internal usage only, ClassEnumerator must exist in
@@ -106,7 +128,7 @@ public final class ClassEnumerator {
      * @return loadedClasses object
      * @since 0.0.1
      */
-    public static Set<LoadedClasses> loadClassesFromPackage(String packageName) {
+    public static Map<String, LoadedClasses> loadClassesFromPackage(String packageName) {
         if(packageName.contains(".")) {
             packageName = packageName.replace(".", "/");
         }
@@ -122,7 +144,7 @@ public final class ClassEnumerator {
      * @return loadedClasses object
      * @since 0.0.1
      */
-    public static Set<LoadedClasses> loadClassesFromPackage(final Class<?> clazz) {
+    public static Map<String, LoadedClasses> loadClassesFromPackage(final Class<?> clazz) {
         String packageName = clazz.getPackage().getName().replace(".", "/");
         String codeSource = clazz.getProtectionDomain().getCodeSource().getLocation().getPath();
         return loadClassesFromPackage(packageName, codeSource);
@@ -137,12 +159,11 @@ public final class ClassEnumerator {
      * @return loadedClasses object
      * @since 0.0.1
      */
-    //TODO: Return a mapping: packageName -> Set<LoadedClasses>
-    private static Set<LoadedClasses> loadClassesFromPackage(final String packageName, String codeSource) {
+    private static Map<String, LoadedClasses> loadClassesFromPackage(final String packageName, String codeSource) {
         boolean isJar = codeSource.endsWith(".jar");
         codeSource += isJar ? "" : packageName;
         codeSource = codeSource.replace(".", "/");
-        Set<LoadedClasses> loadedClassesSet = Collections.synchronizedSet(new HashSet<>());
+        Map<String, LoadedClasses> loadedClassesMap = new HashMap<>();
         File file;
         try {
             file = new File(URLDecoder.decode(codeSource, "UTF-8"));
@@ -159,12 +180,11 @@ public final class ClassEnumerator {
             return null;
         }
         if (isJar) {
-            loadedClassesSet.add(loadClassesFromJar(file));
+            loadedClassesMap.put(codeSource, loadClassesFromJar(file));
         } else {
-            loadedClassesSet.addAll(processFileTree(file, classLoader, packageName, false).values());
-
+            loadedClassesMap.putAll(processFileTree(file, classLoader, packageName, false));
         }
-        return loadedClassesSet;
+        return loadedClassesMap;
     }
 
     /**
@@ -226,7 +246,6 @@ public final class ClassEnumerator {
      * @return set of classes
      * @since 0.0.1
      */
-    //TODO: Fix mapping so that is maps: directoryName -> Set<LoadedClasses>
     private static Map<String, LoadedClasses> processFileTree(final File directory, final ClassLoader classLoader,
                                                               final String prepend, final boolean jarOnly) {
         final Map<String, LoadedClasses> classMap = new HashMap<>();
@@ -234,6 +253,7 @@ public final class ClassEnumerator {
         if (!files.isPresent()) {
             return classMap;
         }
+        LoadedClasses loaded = new LoadedClasses(classLoader);
         Arrays.stream(files.get()).parallel().forEach(fileName -> {
             Optional<String> className = Optional.empty();
             if (!jarOnly) {
@@ -243,9 +263,7 @@ public final class ClassEnumerator {
                 if (className.isPresent()) {
                     Optional<Class<?>> clazz = Optional.ofNullable(loadClass(className.get(), classLoader));
                     if (clazz.isPresent()) {
-                        LoadedClasses loaded = new LoadedClasses(classLoader);
                         loaded.addClass(clazz.get());
-                        classMap.put(fileName, loaded);
                     }
                     return;
                 }
@@ -255,9 +273,13 @@ public final class ClassEnumerator {
                 classMap.putAll(processFileTree(subDir, classLoader,
                         String.format("%s.%s", prepend, fileName), jarOnly));
             } else if (subDir.getName().toLowerCase().trim().endsWith(".jar")) {
-                classMap.put(subDir.getName().replace(".jar", ""), loadClassesFromJar(subDir));
+                //keeping the .jar extension to differentiate from directories
+                classMap.put(subDir.getName(), loadClassesFromJar(subDir));
             }
         });
+        if(!loaded.isEmpty()) {
+            classMap.put(prepend.replace("/", "."), loaded);
+        }
         return classMap;
     }
 
@@ -335,7 +357,7 @@ public final class ClassEnumerator {
          * @since 0.0.1
          */
         public synchronized void addClass(final Class<?> clazz) {
-            this.classMap.put(clazz.getName(), clazz);
+            this.classMap.put(clazz.getCanonicalName(), clazz);
         }
 
         /**
@@ -360,6 +382,22 @@ public final class ClassEnumerator {
             for (Class<?> clazz : classes) {
                 this.addClass(clazz);
             }
+        }
+
+        /**
+         * Wrapper for checking if this object is empty
+         * @return HashMap::isEmpty
+         */
+        public boolean isEmpty() {
+            return this.classMap.isEmpty();
+        }
+
+        /**
+         * Wrapper for checking the size of this object
+         * @return HashMap::size
+         */
+        public int size() {
+            return this.classMap.size();
         }
 
         @Override
