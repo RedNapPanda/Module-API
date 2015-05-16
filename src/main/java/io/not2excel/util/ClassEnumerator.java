@@ -117,11 +117,11 @@ public final class ClassEnumerator {
 
     /**
      * Retrieves all classes from a specified package
-     * <p>
+     * <p/>
      * NOTE: Internal usage only, ClassEnumerator must exist in
      * the same {@link java.security.ProtectionDomain#getCodeSource},
      * else this will fail and return a loadedClasses object that is empty
-     * <p>
+     * <p/>
      * Calls {@link io.not2excel.util.ClassEnumerator#loadClassesFromPackage(java.lang.String, java.lang.String)}
      *
      * @param packageName internal package name
@@ -129,7 +129,7 @@ public final class ClassEnumerator {
      * @since 0.0.1
      */
     public static Map<String, LoadedClasses> loadClassesFromPackage(String packageName) {
-        if(packageName.contains(".")) {
+        if (packageName.contains(".")) {
             packageName = packageName.replace(".", "/");
         }
         String codeSource = ClassEnumerator.class.getProtectionDomain().getCodeSource().getLocation().getPath();
@@ -162,8 +162,9 @@ public final class ClassEnumerator {
     private static Map<String, LoadedClasses> loadClassesFromPackage(final String packageName, String codeSource) {
         boolean isJar = codeSource.endsWith(".jar");
         codeSource += isJar ? "" : packageName;
-        codeSource = codeSource.replace(".", "/");
-        Map<String, LoadedClasses> loadedClassesMap = new HashMap<>();
+        if (!isJar) {
+            codeSource = codeSource.replace(".", "/");
+        }
         File file;
         try {
             file = new File(URLDecoder.decode(codeSource, "UTF-8"));
@@ -180,22 +181,109 @@ public final class ClassEnumerator {
             return null;
         }
         if (isJar) {
-            loadedClassesMap.put(codeSource, loadClassesFromJar(file));
+            LoadedClasses jarClasses = loadClassesFromJarUnformatted(file);
+            return formatClasses(jarClasses);
         } else {
-            loadedClassesMap.putAll(processFileTree(file, classLoader, packageName, false));
+            return processFileTree(file, classLoader, packageName, false);
         }
-        return loadedClassesMap;
+    }
+
+    /**
+     * Loads the classes from the current Jar that ClassEnumerator resides in
+     * Passes the loaded classes to {@link io.not2excel.util.ClassEnumerator#formatClasses(LoadedClasses)} to return
+     * Returns the value from the resulting pass
+     *
+     * @return mapped classes
+     * @since 0.0.1
+     */
+    public static Map<String, LoadedClasses> loadClassesFromJar() {
+        File jarFile = new File(ClassEnumerator.class.getProtectionDomain().getCodeSource().getLocation().getFile());
+        if (!jarFile.getName().endsWith(".jar")) {
+            return Collections.emptyMap();
+        }
+        LoadedClasses jarClasses = loadClassesFromJarUnformatted(jarFile);
+        return formatClasses(jarClasses);
+    }
+
+    /**
+     * Passes the relative {@link io.not2excel.util.ClassEnumerator.LoadedClasses} object created from processing a jar to {@link io.not2excel.util.ClassEnumerator#formatClasses(LoadedClasses)}
+     * Returns the value from the resulting pass
+     *
+     * @param file file passed that *should* be a .jar file
+     * @return mapped classes
+     * @since 0.0.1
+     */
+    public static Map<String, LoadedClasses> loadClassesFromJar(final File file) {
+        LoadedClasses jarClasses = loadClassesFromJarUnformatted(file);
+        return formatClasses(jarClasses);
+    }
+
+    /**
+     * Passes the relative {@link io.not2excel.util.ClassEnumerator.LoadedClasses} object created from processing a jar to {@link io.not2excel.util.ClassEnumerator#formatClasses(LoadedClasses)}
+     * Returns the value from the resulting pass
+     *
+     * @param file file passed that *should* be a .jar file
+     * @return mapped classes
+     * @since 0.0.1
+     */
+    public static Map<String, LoadedClasses> loadClassesFromJar(final File file, final ClassLoader classLoader) {
+        LoadedClasses jarClasses = loadClassesFromJarUnformatted(file, classLoader);
+        return formatClasses(jarClasses);
+    }
+
+    /**
+     * Formats the LoadedClasses object into a pretty mapping
+     * Mapping follows the same as processFileTree pkgName -> relative LoadedClasses object
+     *
+     * @param classes LoadedClasses object
+     * @return mapped classes
+     */
+    private static Map<String, LoadedClasses> formatClasses(LoadedClasses classes) {
+        return formatClasses(classes, null);
+    }
+
+    /**
+     * Formats the LoadedClasses object into a pretty mapping
+     * Mapping follows the same as processFileTree pkgName -> relative LoadedClasses object
+     *
+     * @param classes     LoadedClasses object
+     * @param curClassMap current mapping to push the formatted object to, avoids recreation of LoadedClasses objects, and prevents overwriting existing objects
+     * @return mapped classes
+     */
+    private static Map<String, LoadedClasses> formatClasses(LoadedClasses classes, Map<String, LoadedClasses> curClassMap) {
+        Map<String, LoadedClasses> classMap;
+        if (curClassMap == null) {
+            classMap = new HashMap<>();
+        } else {
+            classMap = new HashMap<>(curClassMap);
+        }
+        if (classes != null) {
+            classes.forEach(e -> {
+                String pkgName = e.getValue().getPackage().getName();
+                if (classMap.containsKey(pkgName)) {
+                    LoadedClasses curLoaded = classMap.get(pkgName);
+                    curLoaded.addClass(e.getValue());
+                    classMap.put(pkgName, curLoaded);
+                } else {
+                    LoadedClasses newLoaded = new LoadedClasses(classes.classLoader);
+                    newLoaded.addClass(e.getValue());
+                    classMap.put(pkgName, newLoaded);
+                }
+            });
+        }
+        return classMap;
     }
 
     /**
      * Returns the relative {@link io.not2excel.util.ClassEnumerator.LoadedClasses} object created from processing a jar
-     * Calls {@link io.not2excel.util.ClassEnumerator#loadClassesFromJar(java.io.File, java.lang.ClassLoader)}
+     * Calls {@link io.not2excel.util.ClassEnumerator#loadClassesFromJarUnformatted(java.io.File, java.lang.ClassLoader)}
+     * This returns an unformatted singular loadedClasses object containing all classes
      *
      * @param file file passed that *should* be a .jar file
      * @return loadedClasses object
      * @since 0.0.1
      */
-    public static LoadedClasses loadClassesFromJar(final File file) {
+    public static LoadedClasses loadClassesFromJarUnformatted(final File file) {
         final ClassLoader classLoader;
         try {
             classLoader = new URLClassLoader(new URL[]{file.toURI().toURL()},
@@ -204,18 +292,18 @@ public final class ClassEnumerator {
             logger.log(Level.WARNING, "Failed to create ClassLoader", e);
             return null;
         }
-        return loadClassesFromJar(file, classLoader);
+        return loadClassesFromJarUnformatted(file, classLoader);
     }
 
     /**
      * Returns the relative {@link io.not2excel.util.ClassEnumerator.LoadedClasses} object created from processing a jar
+     * This returns an unformatted singular loadedClasses object containing all classes
      *
      * @param file file passed that *should* be a .jar file
      * @return loadedClasses object
      * @since 0.0.1
      */
-    //TODO: Possibly fix structure of loaded classes **NOTE: Most likely this will never be necessary, but just as an future idea
-    public static LoadedClasses loadClassesFromJar(final File file, final ClassLoader classLoader) {
+    public static LoadedClasses loadClassesFromJarUnformatted(final File file, final ClassLoader classLoader) {
         final LoadedClasses loadedClasses = new LoadedClasses(classLoader);
         try {
             final JarFile jarFile = new JarFile(file);
@@ -273,11 +361,13 @@ public final class ClassEnumerator {
                 classMap.putAll(processFileTree(subDir, classLoader,
                         String.format("%s.%s", prepend, fileName), jarOnly));
             } else if (subDir.getName().toLowerCase().trim().endsWith(".jar")) {
-                //keeping the .jar extension to differentiate from directories
-                classMap.put(subDir.getName(), loadClassesFromJar(subDir));
+                LoadedClasses jarClasses = loadClassesFromJarUnformatted(subDir);
+                Map<String, LoadedClasses> formatted = formatClasses(jarClasses, classMap);
+                classMap.clear();
+                classMap.putAll(formatted);
             }
         });
-        if(!loaded.isEmpty()) {
+        if (!loaded.isEmpty()) {
             classMap.put(prepend.replace("/", "."), loaded);
         }
         return classMap;
@@ -357,6 +447,10 @@ public final class ClassEnumerator {
          * @since 0.0.1
          */
         public synchronized void addClass(final Class<?> clazz) {
+            if (this.classMap.containsKey(clazz.getCanonicalName())) {
+                logger.log(Level.WARNING, clazz.getName() + " => Already loaded. Skipping loading.");
+                return;
+            }
             this.classMap.put(clazz.getCanonicalName(), clazz);
         }
 
@@ -386,6 +480,7 @@ public final class ClassEnumerator {
 
         /**
          * Wrapper for checking if this object is empty
+         *
          * @return HashMap::isEmpty
          */
         public boolean isEmpty() {
@@ -394,6 +489,7 @@ public final class ClassEnumerator {
 
         /**
          * Wrapper for checking the size of this object
+         *
          * @return HashMap::size
          */
         public int size() {
@@ -403,6 +499,16 @@ public final class ClassEnumerator {
         @Override
         public Iterator<Entry<String, Class<?>>> iterator() {
             return this.classMap.entrySet().iterator();
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder builder = new StringBuilder();
+            this.classMap.forEach((s, c) -> {
+                builder.append(c.getSimpleName()).append(" => ").append(s);
+                builder.append("\n");
+            });
+            return builder.toString();
         }
     }
 }

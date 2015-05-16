@@ -18,7 +18,7 @@ public class Main {
             System.out.println("<====================>");
             System.out.println(s);
             System.out.println("----------------------");
-            l.forEach(e -> System.out.println(e.getKey().replace(s, "").substring(1) + " => " + e.getValue().getName()));
+            System.out.println(l.toString());
             System.out.println("<====================>");
         });
     }

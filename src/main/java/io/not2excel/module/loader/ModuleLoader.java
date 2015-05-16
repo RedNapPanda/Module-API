@@ -18,7 +18,7 @@ import java.util.Map;
 public interface ModuleLoader<M extends Module> {
 
     default Map<String, LoadedClasses> getInternalModules() {
-        return ClassEnumerator.loadClassesFromPackage("io.not2excel");
+        return ClassEnumerator.loadClassesFromJar();
     }
 
     ModuleCoordinator<M> getRelativeCoordinator();
