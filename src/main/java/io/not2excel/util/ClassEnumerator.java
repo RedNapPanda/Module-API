@@ -46,6 +46,15 @@ public final class ClassEnumerator {
     private static final Logger logger = Logger.getLogger("ClassEnumerator");
 
     /**
+     * Returns true if this class is run from a jar file
+     *
+     * @return is run from a jar file or not
+     */
+    public static boolean isJar() {
+        return ClassEnumerator.class.getProtectionDomain().getCodeSource().getLocation().getFile().endsWith(".jar");
+    }
+
+    /**
      * Filters a list of classes by annotation
      *
      * @param input      class list found by ClassEnumerator
@@ -198,7 +207,7 @@ public final class ClassEnumerator {
      */
     public static Map<String, LoadedClasses> loadClassesFromJar() {
         File jarFile = new File(ClassEnumerator.class.getProtectionDomain().getCodeSource().getLocation().getFile());
-        if (!jarFile.getName().endsWith(".jar")) {
+        if (!isJar()) {
             return Collections.emptyMap();
         }
         LoadedClasses jarClasses = loadClassesFromJarUnformatted(jarFile);
