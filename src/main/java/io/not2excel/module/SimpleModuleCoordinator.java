@@ -30,6 +30,16 @@ public class SimpleModuleCoordinator<M extends Module> implements ModuleCoordina
     }
 
     @Override
+    public M instantiate(Class<M> moduleClass) {
+        try {
+            return moduleClass.newInstance();
+        } catch (InstantiationException | IllegalAccessException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    @Override
     public void load(M module) throws ModuleLoadException {
         if (!this.hasModule(module.getClass())) {
             ModuleInfo info = this.getModuleInfo(module);
@@ -45,9 +55,9 @@ public class SimpleModuleCoordinator<M extends Module> implements ModuleCoordina
     public void load(Class<M> moduleClass) {
         M module;
         try {
-            module = moduleClass.newInstance();
+            module = instantiate(moduleClass);
             this.load(module);
-        } catch (InstantiationException | IllegalAccessException | ModuleLoadException e) {
+        } catch (ModuleLoadException e) {
             e.printStackTrace();
         }
     }

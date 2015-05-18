@@ -20,6 +20,8 @@ import java.util.Map;
 
 public interface ModuleCoordinator<M extends Module> {
 
+    M instantiate(Class<M> moduleClass);
+
     void load(M module) throws ModuleLoadException;
 
     void load(Class<M> moduleClass) throws ModuleLoadException;

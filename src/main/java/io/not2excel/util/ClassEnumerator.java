@@ -17,8 +17,6 @@ package io.not2excel.util;
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import lombok.Getter;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -38,7 +36,7 @@ import java.util.stream.Collectors;
  * Class of static methods to enumerate, load, and possibly filter Class files
  *
  * @author not2excel
- * @version 0.0.1
+ * @version 1.0.0
  * @since 0.0.1
  */
 public final class ClassEnumerator {
@@ -55,6 +53,17 @@ public final class ClassEnumerator {
     }
 
     /**
+     * Retrieves the parent file of the CodeSource location of this class
+     * May return null if non existant
+     *
+     * @return parent directory
+     * @since 0.0.1
+     */
+    public static File getParentFolder() {
+        return new File(ClassEnumerator.class.getProtectionDomain().getCodeSource().getLocation().getFile()).getParentFile();
+    }
+
+    /**
      * Filters a list of classes by annotation
      *
      * @param input      class list found by ClassEnumerator
@@ -62,7 +71,7 @@ public final class ClassEnumerator {
      * @return filtered list
      * @since 0.0.1
      */
-    public static List<Class<?>> filterByAnnotation(final List<Class<?>> input,
+    public static List<Class<?>> filterByAnnotation(List<Class<?>> input,
                                                     Class<? extends Annotation> annotation) {
         return input.stream().filter(c -> c.isAnnotationPresent(annotation)).collect(Collectors.toList());
     }
@@ -75,7 +84,7 @@ public final class ClassEnumerator {
      * @return filtered list
      * @since 0.0.1
      */
-    public static List<Class<?>> filterByAnnotation(final LoadedClasses input,
+    public static List<Class<?>> filterByAnnotation(LoadedClasses input,
                                                     Class<? extends Annotation> annotation) {
         return input.getClassMap().values().stream()
                 .filter(c -> c.isAnnotationPresent(annotation)).collect(Collectors.toList());
@@ -84,12 +93,12 @@ public final class ClassEnumerator {
     /**
      * Filters a LoadedClasses mapping for classes that have the passed annotation
      *
-     * @param classes mapped LoadedClasses objects
+     * @param classes    mapped LoadedClasses objects
      * @param annotation annotation to filter by
      * @return filtered list
      * @since 0.0.1
      */
-    public static List<Class<?>> filterByAnnotation(final Map<String, LoadedClasses> classes,
+    public static List<Class<?>> filterByAnnotation(Map<String, LoadedClasses> classes,
                                                     Class<? extends Annotation> annotation) {
         List<Class<?>> classList = new LinkedList<>();
         classes.values().stream().filter(l -> classList.addAll(filterByAnnotation(l, annotation)));
@@ -99,12 +108,12 @@ public final class ClassEnumerator {
     /**
      * Filters a list of classes by an assignable class
      *
-     * @param input class list
+     * @param input          class list
      * @param assignableFrom class that should be assignable from checked class
      * @return filtered list
      * @since 0.0.1
      */
-    public static List<Class<?>> filterByAssignableFrom(final List<Class<?>> input,
+    public static List<Class<?>> filterByAssignableFrom(List<Class<?>> input,
                                                         Class<?> assignableFrom) {
         return input.stream().filter(assignableFrom::isAssignableFrom).collect(Collectors.toList());
     }
@@ -112,12 +121,12 @@ public final class ClassEnumerator {
     /**
      * Filters a LoadedClasses object by an assignable class
      *
-     * @param input LoadedClasses object
+     * @param input          LoadedClasses object
      * @param assignableFrom class that should be assignable from checked class
      * @return filtered list
      * @since 0.0.1
      */
-    public static List<Class<?>> filterByAssignableFrom(final LoadedClasses input,
+    public static List<Class<?>> filterByAssignableFrom(LoadedClasses input,
                                                         Class<?> assignableFrom) {
         return input.getClassMap().values().stream()
                 .filter(assignableFrom::isAssignableFrom).collect(Collectors.toList());
@@ -126,12 +135,12 @@ public final class ClassEnumerator {
     /**
      * Filters a mapping of LoadedClasses objects by an assignable class
      *
-     * @param classes mapped LoadedClasses objects
+     * @param classes        mapped LoadedClasses objects
      * @param assignableFrom class that should be assignable from checked class
      * @return filtered list
      * @since 0.0.1
      */
-    public static List<Class<?>> filterByAssignableFrom(final Map<String, LoadedClasses> classes,
+    public static List<Class<?>> filterByAssignableFrom(Map<String, LoadedClasses> classes,
                                                         Class<?> assignableFrom) {
         List<Class<?>> classList = new LinkedList<>();
         classes.values().forEach(l -> classList.addAll(filterByAssignableFrom(l, assignableFrom)));
@@ -146,9 +155,9 @@ public final class ClassEnumerator {
      * @param jarOnly   load only Jar Files
      * @return loadedClasses object
      */
-    public static Map<String, LoadedClasses> loadClassesFromDirectory(final File directory, final boolean jarOnly) {
+    public static Map<String, LoadedClasses> loadClassesFromDirectory(File directory, boolean jarOnly) {
         Map<String, LoadedClasses> loadedMap = new HashMap<>();
-        final ClassLoader classLoader;
+        ClassLoader classLoader;
         try {
             classLoader = new URLClassLoader(new URL[]{directory.toURI().toURL()},
                     ClassEnumerator.class.getClassLoader());
@@ -211,7 +220,7 @@ public final class ClassEnumerator {
      * @return loadedClasses object
      * @since 0.0.1
      */
-    public static Map<String, LoadedClasses> loadClassesFromPackage(final Class<?> clazz) {
+    public static Map<String, LoadedClasses> loadClassesFromPackage(Class<?> clazz) {
         String packageName = clazz.getPackage().getName().replace(".", "/");
         String codeSource = clazz.getProtectionDomain().getCodeSource().getLocation().getPath();
         return loadClassesFromPackage(packageName, codeSource);
@@ -226,7 +235,7 @@ public final class ClassEnumerator {
      * @return loadedClasses object
      * @since 0.0.1
      */
-    private static Map<String, LoadedClasses> loadClassesFromPackage(final String packageName, String codeSource) {
+    private static Map<String, LoadedClasses> loadClassesFromPackage(String packageName, String codeSource) {
         boolean isJar = codeSource.endsWith(".jar");
         codeSource += isJar ? "" : packageName;
         if (!isJar) {
@@ -239,7 +248,7 @@ public final class ClassEnumerator {
             logger.log(Level.WARNING, "Failed to decode package path", e);
             return null;
         }
-        final ClassLoader classLoader;
+        ClassLoader classLoader;
         try {
             classLoader = new URLClassLoader(new URL[]{file.toURI().toURL()},
                     ClassEnumerator.class.getClassLoader());
@@ -280,7 +289,7 @@ public final class ClassEnumerator {
      * @return mapped classes
      * @since 0.0.1
      */
-    public static Map<String, LoadedClasses> loadClassesFromJar(final File file) {
+    public static Map<String, LoadedClasses> loadClassesFromJar(File file) {
         LoadedClasses jarClasses = loadClassesFromJarUnformatted(file);
         return formatClasses(jarClasses);
     }
@@ -293,7 +302,7 @@ public final class ClassEnumerator {
      * @return mapped classes
      * @since 0.0.1
      */
-    public static Map<String, LoadedClasses> loadClassesFromJar(final File file, final ClassLoader classLoader) {
+    public static Map<String, LoadedClasses> loadClassesFromJar(File file, ClassLoader classLoader) {
         LoadedClasses jarClasses = loadClassesFromJarUnformatted(file, classLoader);
         return formatClasses(jarClasses);
     }
@@ -350,8 +359,8 @@ public final class ClassEnumerator {
      * @return loadedClasses object
      * @since 0.0.1
      */
-    public static LoadedClasses loadClassesFromJarUnformatted(final File file) {
-        final ClassLoader classLoader;
+    public static LoadedClasses loadClassesFromJarUnformatted(File file) {
+        ClassLoader classLoader;
         try {
             classLoader = new URLClassLoader(new URL[]{file.toURI().toURL()},
                     ClassEnumerator.class.getClassLoader());
@@ -370,10 +379,10 @@ public final class ClassEnumerator {
      * @return loadedClasses object
      * @since 0.0.1
      */
-    public static LoadedClasses loadClassesFromJarUnformatted(final File file, final ClassLoader classLoader) {
-        final LoadedClasses loadedClasses = new LoadedClasses(classLoader);
+    public static LoadedClasses loadClassesFromJarUnformatted(File file, ClassLoader classLoader) {
+        LoadedClasses loadedClasses = new LoadedClasses(classLoader);
         try {
-            final JarFile jarFile = new JarFile(file);
+            JarFile jarFile = new JarFile(file);
             jarFile.stream().parallel().forEach(entry -> {
                 if (entry.isDirectory() || !entry.getName().toLowerCase().trim().endsWith(".class")) {
                     return;
@@ -401,10 +410,10 @@ public final class ClassEnumerator {
      * @return set of classes
      * @since 0.0.1
      */
-    private static Map<String, LoadedClasses> processFileTree(final File directory, final ClassLoader classLoader,
-                                                              final String prepend, final boolean jarOnly) {
-        final Map<String, LoadedClasses> classMap = new HashMap<>();
-        final Optional<String[]> files = Optional.ofNullable(directory.list());
+    private static Map<String, LoadedClasses> processFileTree(File directory, ClassLoader classLoader,
+                                                              String prepend, boolean jarOnly) {
+        Map<String, LoadedClasses> classMap = new HashMap<>();
+        Optional<String[]> files = Optional.ofNullable(directory.list());
         if (!files.isPresent()) {
             return classMap;
         }
@@ -423,7 +432,7 @@ public final class ClassEnumerator {
                     return;
                 }
             }
-            final File subDir = new File(directory, fileName);
+            File subDir = new File(directory, fileName);
             if (subDir.isDirectory()) {
                 classMap.putAll(processFileTree(subDir, classLoader,
                         String.format("%s.%s", prepend, fileName), jarOnly));
@@ -450,16 +459,16 @@ public final class ClassEnumerator {
      * If the passed className ends with ".class", it'll be removed
      * If the passed className starts with ".", it'll be sub-stringed out
      * Wraps the exception within this method
-     *
+     * <p/>
      * NOTE: This does not initialize static blocks
-     *       If you want to initialize the class, use {@link Class#forName(String)} on the loadedClasses
+     * If you want to initialize the class, use {@link Class#forName(String)} on the loadedClasses
      *
      * @param name        fully qualified name
      * @param classLoader relative classLoader
      * @return class if loaded else null
      * @since 0.0.1
      */
-    public static Class<?> loadClass(String name, final ClassLoader classLoader) {
+    public static Class<?> loadClass(String name, ClassLoader classLoader) {
         Class<?> retVal = null;
         if (name.endsWith(".class")) {
             name = name.replace(".class", "");
@@ -479,6 +488,16 @@ public final class ClassEnumerator {
     }
 
     /**
+     * Simply a wrapping utility method for retrieving a Class object's package name
+     *
+     * @param clazz clazz to pull package from
+     * @return package name
+     */
+    public static String packageName(Class<?> clazz) {
+        return clazz.getPackage().getName();
+    }
+
+    /**
      * Contains the set of loaded classes and the relative classLoader
      *
      * @author not2excel
@@ -487,9 +506,7 @@ public final class ClassEnumerator {
      */
     public static final class LoadedClasses implements Iterable<Entry<String, Class<?>>> {
 
-        @Getter
         private final ClassLoader classLoader;
-        @Getter
         private final Map<String, Class<?>> classMap = new HashMap<>();
 
         /**
@@ -498,7 +515,7 @@ public final class ClassEnumerator {
          * @param classLoader ClassLoader instance
          * @since 0.0.1
          */
-        public LoadedClasses(final ClassLoader classLoader) {
+        public LoadedClasses(ClassLoader classLoader) {
             this.classLoader = classLoader;
         }
 
@@ -520,7 +537,7 @@ public final class ClassEnumerator {
          * @param clazz Class to add to classMap
          * @since 0.0.1
          */
-        public synchronized void addClass(final Class<?> clazz) {
+        public synchronized void addClass(Class<?> clazz) {
             if (this.classMap.containsKey(clazz.getCanonicalName())) {
                 logger.log(Level.WARNING, clazz.getName() + " => Already loaded. Skipping loading.");
                 return;
@@ -534,7 +551,7 @@ public final class ClassEnumerator {
          * @param classes classes to add to classMap
          * @since 0.0.1
          */
-        public void addClasses(final Class<?>... classes) {
+        public void addClasses(Class<?>... classes) {
             for (Class<?> clazz : classes) {
                 this.addClass(clazz);
             }
@@ -546,7 +563,7 @@ public final class ClassEnumerator {
          * @param classes classes to add to classMap
          * @since 0.0.1
          */
-        public void addClasses(final Set<Class<?>> classes) {
+        public void addClasses(Set<Class<?>> classes) {
             for (Class<?> clazz : classes) {
                 this.addClass(clazz);
             }
@@ -582,7 +599,31 @@ public final class ClassEnumerator {
                 builder.append(c.getSimpleName()).append(" => ").append(s);
                 builder.append("\n");
             });
-            return builder.toString();
+            return builder.substring(0, builder.length() - 1);
         }
+
+        /**
+         * Attempts to resolve the package name via the class object.
+         * NOTE: In the case that the LoadedClasses are not mapped appropriately, this will return the first Class object's package.
+         * Therefore in said case, this method should be avoided and you should use {@link ClassEnumerator#packageName(Class)}
+         *
+         * @return package name
+         */
+        public String getPackageName() {
+            if (isEmpty()) {
+                throw new RuntimeException("Can't retrieve proper package name, due to empty object.");
+            }
+            return this.classMap.values().iterator().next().getPackage().getName();
+        }
+
+        public ClassLoader getClassLoader() {
+            return this.classLoader;
+        }
+
+        public Map<String, Class<?>> getClassMap() {
+            return this.classMap;
+        }
+
+
     }
 }
